@@ -51,14 +51,16 @@ const StudentQuiz = () => {
         recognition.start();
         setIsListening(true);
 
-        recognition.onresult = (event) => {
+        recognition.onresult = (event: SpeechRecognitionEvent) => {
             const transcript = event.results[0][0].transcript;
-            const normalizedTranscript = transcript.trim().toLowerCase().replace(/[^\w\s]/gi, ""); // Remove punctuation
+            const normalizedTranscript = transcript.trim().toLowerCase().replace(/[^\w\s]/gi, "");
             const newAnswers = [...answers];
             newAnswers[currentQuestionIndex] = normalizedTranscript;
             setAnswers(newAnswers);
             setIsListening(false);
-        };
+          };
+          
+         
 
         recognition.onerror = () => {
             setIsListening(false);
