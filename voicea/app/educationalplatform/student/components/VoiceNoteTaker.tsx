@@ -4,16 +4,16 @@ import React, { useState, useRef, useEffect } from "react";
 
 interface Reminder {
   text: string;
-  time: string; // Stored as ISO string
+  time: string;
 }
 
 const VoiceNoteTaker: React.FC = () => {
-  const [isVisible, setIsVisible] = useState<boolean>(true);
-  const [note, setNote] = useState<string>("");
+  const [isVisible, setIsVisible] = useState(true);
+  const [note, setNote] = useState("");
   const [notes, setNotes] = useState<string[]>([]);
-  const [isRecording, setIsRecording] = useState<boolean>(false);
+  const [isRecording, setIsRecording] = useState(false);
   const [reminders, setReminders] = useState<Reminder[]>([]);
-  const [reminderText, setReminderText] = useState<string>("");
+  const [reminderText, setReminderText] = useState("");
   const recognitionRef = useRef<SpeechRecognition | null>(null);
 
   useEffect(() => {
@@ -21,6 +21,28 @@ const VoiceNoteTaker: React.FC = () => {
     const savedReminders = JSON.parse(localStorage.getItem("reminders") || "[]");
     setNotes(savedNotes);
     setReminders(savedReminders);
+
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+    if (SpeechRecognition) {
+      const recognition = new SpeechRecognition();
+      recognition.continuous = true;
+      recognition.interimResults = true;
+      recognition.lang = "en-US";
+
+      recognition.onstart = () => setIsRecording(true);
+      recognition.onend = () => setIsRecording(false);
+
+      recognition.onresult = (event: SpeechRecognitionEvent) => {
+        let transcript = "";
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          transcript += event.results[i][0].transcript + " ";
+        }
+        setNote(transcript);
+      };
+
+      recognitionRef.current = recognition;
+    }
   }, []);
 
   useEffect(() => {
@@ -29,51 +51,30 @@ const VoiceNoteTaker: React.FC = () => {
   }, [notes, reminders]);
 
   useEffect(() => {
-    const checkReminders = () => {
+    const interval = setInterval(() => {
       const now = new Date().toISOString();
       reminders.forEach((reminder, index) => {
         if (reminder.time <= now) {
           const utterance = new SpeechSynthesisUtterance(`Reminder: ${reminder.text}`);
           window.speechSynthesis.speak(utterance);
-
-          // Remove the reminder after triggering
           setReminders((prev) => prev.filter((_, i) => i !== index));
         }
       });
-    };
+    }, 10000);
 
-    const interval = setInterval(checkReminders, 10000); // Check every 10 seconds
     return () => clearInterval(interval);
   }, [reminders]);
 
   const startRecording = () => {
-    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (!SpeechRecognition) {
-      alert("Your browser does not support speech recognition.");
-      return;
+    if (recognitionRef.current) {
+      recognitionRef.current.start();
     }
-
-    recognitionRef.current = new SpeechRecognition();
-    recognitionRef.current.continuous = true;
-    recognitionRef.current.interimResults = true;
-    recognitionRef.current.lang = "en-US";
-
-    recognitionRef.current.onstart = () => setIsRecording(true);
-    recognitionRef.current.onend = () => setIsRecording(false);
-    
-    recognitionRef.current.onresult = (event: SpeechRecognitionEvent) => {
-      let transcript = "";
-      for (let i = event.resultIndex; i < event.results.length; i++) {
-        transcript += event.results[i][0].transcript + " ";
-      }
-      setNote(transcript);
-    };
-
-    recognitionRef.current.start();
   };
 
   const stopRecording = () => {
-    recognitionRef.current?.stop();
+    if (recognitionRef.current) {
+      recognitionRef.current.stop();
+    }
   };
 
   const saveNote = () => {
@@ -97,13 +98,13 @@ const VoiceNoteTaker: React.FC = () => {
       const timeInput = prompt("Enter reminder time (HH:MM 24-hour format):");
       if (timeInput) {
         const [hours, minutes] = timeInput.split(":").map(Number);
-        if (!isNaN(hours) && !isNaN(minutes) && hours >= 0 && hours < 24 && minutes >= 0 && minutes < 60) {
+        if (!isNaN(hours) && !isNaN(minutes)) {
           const now = new Date();
           now.setHours(hours, minutes, 0, 0);
           setReminders([...reminders, { text: reminderText, time: now.toISOString() }]);
           setReminderText("");
         } else {
-          alert("Invalid time format. Please enter HH:MM in 24-hour format.");
+          alert("Invalid time format.");
         }
       }
     }
@@ -113,13 +114,11 @@ const VoiceNoteTaker: React.FC = () => {
     setReminders(reminders.filter((_, i) => i !== index));
   };
 
-  if (!isVisible) return null; // Hide the box when closed
+  if (!isVisible) return null;
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-r from-indigo-400 to-purple-500 p-6 relative">
       <div className="bg-white p-6 rounded-lg shadow-xl w-full max-w-lg text-center relative">
-        
-        {/* Close Button */}
         <button 
           className="absolute top-3 right-3 bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600"
           onClick={() => setIsVisible(false)}
@@ -144,6 +143,7 @@ const VoiceNoteTaker: React.FC = () => {
         </button>
       </div>
 
+      {/* Notes Section */}
       <div className="mt-6 w-full max-w-lg">
         <h3 className="text-xl font-semibold text-white mb-4">Saved Notes</h3>
         <div className="grid gap-4">
@@ -159,12 +159,15 @@ const VoiceNoteTaker: React.FC = () => {
         </div>
       </div>
 
+      {/* Reminders Section */}
       <div className="mt-6 w-full max-w-lg">
         <h3 className="text-xl font-semibold text-white mb-4">Reminders</h3>
         <div className="grid gap-4">
           {reminders.map((reminder, index) => (
             <div key={index} className="p-4 bg-white rounded-lg shadow flex justify-between items-center">
-              <span className="text-gray-800">{reminder.text} at {new Date(reminder.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+              <span className="text-gray-800">
+                {reminder.text} at {new Date(reminder.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+              </span>
               <button className="text-red-500" onClick={() => deleteReminder(index)}>✖</button>
             </div>
           ))}
