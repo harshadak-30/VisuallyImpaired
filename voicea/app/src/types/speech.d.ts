@@ -33,21 +33,23 @@ declare global {
     readonly resultIndex: number;
     readonly results: SpeechRecognitionResultList;
   }
-
-  interface SpeechRecognitionErrorEvent extends Event {
-    error: string;
-    message: string;
-  }
-
-  interface SpeechGrammarList {
-    addFromString(string: string, weight?: number): void;
-    addFromURI(src: string, weight?: number): void;
-    [index: number]: SpeechGrammar;
+  interface SpeechRecognitionResultList {
+    [index: number]: SpeechRecognitionResult;
     length: number;
   }
 
-  interface SpeechGrammar {
-    src: string;
-    weight: number;
+  interface SpeechRecognitionResult {
+    [index: number]: SpeechRecognitionAlternative;
+    length: number;
+    isFinal: boolean;
+  }
+
+  interface SpeechRecognitionAlternative {
+    transcript: string;
+    confidence: number;
   }
 }
+
+  
+
+
