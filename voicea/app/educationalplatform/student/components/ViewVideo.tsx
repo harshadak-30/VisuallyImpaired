@@ -1,12 +1,22 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
-import VideoPlayer from "../../components/VideoPlayer"; 
+import VideoPlayer from "../../components/VideoPlayer"; // ✅ Use this imported component
 
 const API_URL = "http://localhost:5000/api/videos";
 
-const StudentViewVideos = () => {
+interface Props {
+  userRole: string;
+  userEmail: string;
+}
+interface VideoPlayerProps {
+  videoUrl: string;
+  onClose: () => void;
+  onEnded?: () => void; // ✅ Add this optional prop
+}
+
+const StudentViewVideos: React.FC<Props> = ({ userRole, userEmail }) => {
   const [videos, setVideos] = useState<any[]>([]);
-  const [playingIndex, setPlayingIndex] = useState<number>(0); // Track the playing video index
+  const [playingIndex, setPlayingIndex] = useState<number | null>(null);
 
   useEffect(() => {
     fetchVideos();
@@ -15,19 +25,20 @@ const StudentViewVideos = () => {
   const fetchVideos = async () => {
     try {
       const res = await axios.get(API_URL);
-      const sortedVideos = res.data.sort((a: any, b: any) => new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime()); // Sort videos by date (latest first)
+      const sortedVideos = res.data.sort(
+        (a: any, b: any) => new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime()
+      );
       setVideos(sortedVideos);
-      if (sortedVideos.length > 0) {
-        setPlayingIndex(0); // Start playing from the most recent video
-      }
     } catch (error) {
       console.error("Error fetching videos:", error);
     }
   };
 
   const handleVideoEnd = () => {
-    if (playingIndex < videos.length - 1) {
-      setPlayingIndex(playingIndex + 1); // Play the next video
+    if (playingIndex !== null && playingIndex < videos.length - 1) {
+      setPlayingIndex(playingIndex + 1);
+    } else {
+      setPlayingIndex(null); // Close player if last video
     }
   };
 
@@ -62,22 +73,25 @@ const StudentViewVideos = () => {
                 >
                   ▶ Play
                 </button>
-                <button
-                  onClick={() => handleDelete(vid._id)}
-                  className="text-red-600"
-                >
-                  🗑 Delete
-                </button>
+                {userRole === "admin" && (
+                  <button
+                    onClick={() => handleDelete(vid._id)}
+                    className="text-red-600"
+                  >
+                    🗑 Delete
+                  </button>
+                )}
               </div>
             </div>
           ))}
         </div>
       )}
 
-      {videos.length > 0 && playingIndex < videos.length && (
+      {playingIndex !== null && videos[playingIndex] && (
         <VideoPlayer
           videoUrl={videos[playingIndex].videoUrl}
-          onClose={() => setPlayingIndex(videos.length)} // Stop playing when closed
+          onClose={() => setPlayingIndex(null)}
+          
         />
       )}
     </div>
