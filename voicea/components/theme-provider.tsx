@@ -1,4 +1,4 @@
-'use client'
+/*'use client'
 
 import * as React from 'react'
 import {
@@ -8,4 +8,4 @@ import {
 
 export function ThemeProvider({ children, ...props }: ThemeProviderProps) {
   return <NextThemesProvider {...props}>{children}</NextThemesProvider>
-}
+}*/
